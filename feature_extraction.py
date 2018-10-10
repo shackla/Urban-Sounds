@@ -18,26 +18,25 @@ validate = pd.read_csv(os.path.join(parent_dir, 'test.csv'))
 
 
 def parser(row):
-    file_name = os.path.join(parent_dir, tr_sub_dirs, str(row.ID)+'.wav')
+    file_name = os.path.join(parent_dir, ts_sub_dirs, str(row.ID)+'.wav')
 
     try:
         X, sample_rate = librosa.load(file_name, res_type='kaiser_fast')
-
-        mfccs = np.mean(librosa.feature.mfcc(y=X, sr=sample_rate, n_mfcc=40).T,
-                        axis=0)
+        mfccs = np.mean(librosa.feature.mfcc(y=X, sr=sample_rate,
+                                             n_mfcc=40).T, axis=0)
     except Exception as e:
         print('Error encountered while parsing the file:', file_name)
 
         return 'None', 'None'
     feature = mfccs
     label = row.Class
-    print(feature)
+    print(file_name)
     print(label)
     return pd.Series([feature, label], index=['feature', 'label'])
 
 
 def parser_Val(row):
-    file_name = os.path.join(parent_dir, ts_sub_dirs, str(row.ID)+'.wav')
+    file_name = os.path.join(parent_dir, tr_sub_dirs, str(row.ID)+'.wav')
 
     try:
         val_X, sample_rate = librosa.load(file_name, res_type='kaiser_fast')
@@ -51,13 +50,12 @@ def parser_Val(row):
     feature = mfccs
     label = row.Class
     print(file_name)
-    print(feature)
     print(label)
     return pd.Series([feature, label], index=['feature', 'label'])
 
 
-temp = train.apply(parser, axis=1)
-temp_Val = validate.apply(parser_Val, axis=1)
+temp = train.apply(parser_Val, axis=1)
+temp_Val = validate.apply(parser, axis=1)
 
 
 temp.columns = ['feature', 'label']
@@ -69,13 +67,21 @@ y = np.array(temp.label.tolist())
 val_X = np.array(temp_Val.feature.tolist())
 val_Y = np.array(temp_Val.label.tolist())
 
-label_encoder = LabelEncoder()
-lb2 = LabelEncoder()
 
+print(X.shape, X)
+print(val_X.shape, val_X)
+
+
+label_encoder = LabelEncoder()
 y = np_utils.to_categorical(label_encoder.fit_transform(y))
+
+lb2 = LabelEncoder()
 val_Y = np_utils.to_categorical(lb2.fit_transform(val_Y))
 
-num_labels = y.shape[1]
+print(y.shape, y)
+print(val_Y.shape, val_Y)
+
+num_labels = val_Y.shape[1]
 filter_size = 2
 
 
@@ -92,7 +98,7 @@ model.compile(loss='categorical_crossentropy', metrics=['accuracy'],
               optimizer='adam')
 
 
-history = model.fit(X, y, batch_size=32, epochs=5,
+history = model.fit(X, y, batch_size=32, epochs=15,
                     validation_data=(val_X, val_Y))
 
 loss = history.history['loss']
